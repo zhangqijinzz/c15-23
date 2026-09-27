@@ -41,7 +41,7 @@ export class EnergyLensViewModel {
     return this.activeScenario ? summarizeScenario(this.activeScenario) : null;
   }
 
-  updateDevice(deviceId: string, patch: Partial<Pick<EnergyDevice, 'name' | 'watts' | 'dailyHours'>>): void {
+  updateDevice(deviceId: string, patch: Partial<Pick<EnergyDevice, 'name' | 'watts' | 'dailyHours' | 'usage'>>): void {
     const scenario = this.activeScenario;
     if (!scenario) return;
     const device = scenario.devices.find((item) => item.id === deviceId);
@@ -58,7 +58,7 @@ export class EnergyLensViewModel {
   addDevice(): void {
     const scenario = this.activeScenario;
     if (!scenario) return;
-    const device: EnergyDevice = { id: `device-${Date.now()}`, name: '新设备', watts: 100, dailyHours: 1 };
+    const device: EnergyDevice = { id: `device-${Date.now()}`, name: '新设备', watts: 100, dailyHours: 1, usage: { kind: 'daily' } };
     this.commit((current) => ({ ...current, devices: [...current.devices, device] }), '已添加设备，可继续修改参数');
   }
 

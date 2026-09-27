@@ -43,4 +43,28 @@ describe('EnergyLensViewModel', () => {
     expect(vm.getState().status).toBe('error');
     expect(vm.getState().notice?.text).toContain('保存失败');
   });
+
+  it('recalculates totals and shares when a weekly pattern changes', () => {
+    const before = vm.activeSummary?.total.monthlyKwh ?? Infinity;
+    vm.updateDevice('device-aircon', { usage: { kind: 'weekdays' } });
+    const summary = vm.activeSummary;
+    const aircon = summary?.devices.find((device) => device.id === 'device-aircon');
+    expect(aircon?.monthlyKwh).toBeCloseTo(((1200 * 6) / 1000) * ((30 * 5) / 7), 10);
+    expect(summary?.total.monthlyKwh).toBeLessThan(before);
+    expect(aircon?.share).toBeCloseTo((aircon?.monthlyKwh ?? 0) / (summary?.total.monthlyKwh ?? 1), 10);
+    expect(repository.save).toHaveBeenCalled();
+  });
+
+  it('blocks contradictory patterns and keeps the saved device untouched', () => {
+    vm.updateDevice('device-aircon', { usage: { kind: 'timesPerWeek', timesPerWeek: 9 } });
+    expect(vm.getState().status).toBe('error');
+    expect(vm.getState().notice?.text).toContain('每周使用次数');
+    expect(vm.activeScenario?.devices[0].usage).toBeUndefined();
+  });
+
+  it('keeps results identical for saved scenarios without usage patterns', () => {
+    // 示例方案的设备没有 usage 字段，折算结果必须与旧公式一致
+    expect(vm.activeSummary?.total.monthlyKwh).toBeCloseTo(((1200 * 6 + 150 * 10 + 12 * 5) / 1000) * 30, 10);
+    expect(vm.activeSummary?.total.dailyKwh).toBeCloseTo((1200 * 6 + 150 * 10 + 12 * 5) / 1000, 10);
+  });
 });

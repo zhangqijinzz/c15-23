@@ -1,4 +1,4 @@
-import type { EnergyDocument } from '../types';
+import type { EnergyDocument, UsagePattern } from '../types';
 
 const STORAGE_KEY = 'energy-lens.document.v1';
 
@@ -54,5 +54,19 @@ function isDevice(value: unknown): value is EnergyDocument['scenarios'][number][
     && device.watts >= 0
     && typeof device.dailyHours === 'number'
     && device.dailyHours >= 0
-    && device.dailyHours <= 24;
+    && device.dailyHours <= 24
+    && (device.usage === undefined || isUsagePattern(device.usage));
+}
+
+function isUsagePattern(value: unknown): value is UsagePattern {
+  if (!value || typeof value !== 'object') return false;
+  const pattern = value as Partial<UsagePattern>;
+  if (pattern.kind === 'daily' || pattern.kind === 'weekdays') return true;
+  if (pattern.kind === 'timesPerWeek') {
+    return typeof pattern.timesPerWeek === 'number'
+      && Number.isFinite(pattern.timesPerWeek)
+      && pattern.timesPerWeek >= 1
+      && pattern.timesPerWeek <= 7;
+  }
+  return false;
 }

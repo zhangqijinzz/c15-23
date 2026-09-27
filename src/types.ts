@@ -1,8 +1,18 @@
+export type UsagePatternKind = 'daily' | 'weekdays' | 'timesPerWeek';
+
+export interface UsagePattern {
+  kind: UsagePatternKind;
+  /** 仅 kind 为 timesPerWeek 时必填，每周使用次数（1–7）。 */
+  timesPerWeek?: number;
+}
+
 export interface EnergyDevice {
   id: string;
   name: string;
   watts: number;
   dailyHours: number;
+  /** 每周使用规律；缺省视为每天使用（兼容旧数据）。 */
+  usage?: UsagePattern;
 }
 
 export interface EnergyScenario {
