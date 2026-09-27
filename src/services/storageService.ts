@@ -1,4 +1,5 @@
-import type { EnergyDocument } from '../types';
+import { validateSchedule } from '../domain';
+import type { EnergyDocument, WeeklySchedule } from '../types';
 
 const STORAGE_KEY = 'energy-lens.document.v1';
 
@@ -48,11 +49,20 @@ function isScenario(value: unknown): value is EnergyDocument['scenarios'][number
 function isDevice(value: unknown): value is EnergyDocument['scenarios'][number]['devices'][number] {
   if (!value || typeof value !== 'object') return false;
   const device = value as Partial<EnergyDocument['scenarios'][number]['devices'][number]>;
-  return typeof device.id === 'string'
-    && typeof device.name === 'string'
-    && typeof device.watts === 'number'
-    && device.watts >= 0
-    && typeof device.dailyHours === 'number'
-    && device.dailyHours >= 0
-    && device.dailyHours <= 24;
+  if (typeof device.id !== 'string'
+    || typeof device.name !== 'string'
+    || typeof device.watts !== 'number'
+    || device.watts < 0
+    || typeof device.dailyHours !== 'number'
+    || device.dailyHours < 0
+    || device.dailyHours > 24) return false;
+  // 旧数据没有 schedule 字段，按“每天都用”处理；存在时必须自洽
+  return device.schedule === undefined || isValidSchedule(device.schedule, device.dailyHours);
+}
+
+function isValidSchedule(schedule: WeeklySchedule, dailyHours: number): boolean {
+  if (!schedule || typeof schedule !== 'object') return false;
+  if (schedule.mode !== 'daily' && schedule.mode !== 'weekdays' && schedule.mode !== 'weekly') return false;
+  if (schedule.timesPerWeek !== undefined && (typeof schedule.timesPerWeek !== 'number' || schedule.timesPerWeek < 1 || schedule.timesPerWeek > 7)) return false;
+  return validateSchedule(dailyHours, schedule) === null;
 }

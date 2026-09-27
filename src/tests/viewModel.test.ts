@@ -43,4 +43,30 @@ describe('EnergyLensViewModel', () => {
     expect(vm.getState().status).toBe('error');
     expect(vm.getState().notice?.text).toContain('保存失败');
   });
+
+  it('applies a weekly schedule and prorates every derived figure', () => {
+    const before = vm.activeSummary?.total.monthlyKwh ?? 0;
+    vm.updateDevice('device-aircon', { schedule: { mode: 'weekdays' } });
+    const aircon = vm.activeSummary?.devices.find((item) => item.id === 'device-aircon');
+    expect(aircon?.usageDaysPerWeek).toBe(5);
+    expect(aircon?.weeklyHours).toBe(30);
+    expect(vm.activeSummary?.total.monthlyKwh).toBeLessThan(before);
+  });
+
+  it('accepts a fixed times-per-week pattern and prorates by times/7', () => {
+    vm.updateDevice('device-washer', { schedule: { mode: 'weekly', timesPerWeek: 2 } });
+    const washer = vm.activeSummary?.devices.find((item) => item.id === 'device-washer');
+    expect(washer?.usageDaysPerWeek).toBe(2);
+    // 0.5 kWh/次 × 2 次/周 ÷ 7 × 30 天
+    expect(washer?.monthlyKwh).toBeCloseTo((0.5 * 2 * 30) / 7);
+  });
+
+  it('blocks a contradictory times-per-week value before persisting', () => {
+    const original = JSON.stringify(vm.activeScenario?.devices);
+    vm.updateDevice('device-aircon', { schedule: { mode: 'weekly', timesPerWeek: 9 } });
+    expect(vm.getState().status).toBe('error');
+    expect(vm.getState().notice?.text).toContain('1–7');
+    expect(repository.save).not.toHaveBeenCalled();
+    expect(JSON.stringify(vm.activeScenario?.devices)).toBe(original);
+  });
 });
